@@ -12,7 +12,7 @@ st.set_page_config(page_title="El Corte Inglés - Envíos 55653919", page_icon="
 
 EXCEL_MAESTRO = os.path.expanduser("~/Desktop/Control_Envios_Logistica_55653919.xlsx")
 
-# Inicializar lector OCR (en español)
+# Cargar lector OCR
 @st.cache_resource
 def cargar_lector_ocr():
     return easyocr.Reader(['es'], gpu=False)
@@ -36,35 +36,39 @@ def guardar_datos(df, pestana):
         with pd.ExcelWriter(EXCEL_MAESTRO, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name=pestana, index=False)
 
-def extraer_datos_de_foto(imagen_pil):
-    # Convertir imagen PIL a array para EasyOCR
+def extraer_numero_doc(imagen_pil):
     img_array = np.array(imagen_pil)
     resultados = reader.readtext(img_array, detail=0)
     texto_completo = " ".join(resultados)
     
-    # Buscar patrones numéricos (Ej. VR-123456, 55653919, o números de 6 a 8 dígitos)
+    # Extraer únicamente el número de documento/vale
     patron_numero = re.search(r'([A-Z]{2}-\d+|\d{6,8})', texto_completo)
     num_detectado = patron_numero.group(0) if patron_numero else "Revisar foto"
     
-    return num_detectado, texto_completo
+    return num_detectado
 
-# --- ENCABEZADO CORPORATIVO EL CORTE INGLÉS ---
-st.markdown("<h1 style='text-align: center; font-style: italic; font-weight: bold; color: #006633;'>El Corte Inglés</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; margin-top: -15px;'>Envíos 55653919 — Escáner Automático OCR</h3>", unsafe_allow_html=True)
+# --- ENCABEZADO CORPORATIVO CON LOGO OFICIAL ---
+col_logo_1, col_logo_2, col_logo_3 = st.columns([1, 2, 1])
+with col_logo_2:
+    if os.path.exists("el-corte-ingles-logo-png_seeklogo-365743.png"):
+        st.image("el-corte-ingles-logo-png_seeklogo-365743.png", use_container_width=True)
+    else:
+        # Enlace alternativo de respaldo mientras subes la imagen
+        st.image("https://seeklogo.com/images/E/el-corte-ingles-logo-365743.png", use_container_width=True)
+
+st.markdown("<h3 style='text-align: center; margin-top: -10px; color: #006633;'>Envíos 55653919</h3>", unsafe_allow_html=True)
+st.caption("<p style='text-align: center;'>Registro automático con fecha de escaneo en tiempo real</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 tab_rechazos, tab_traspasos, tab_tienda, tab_recogidas = st.tabs([
     "📦 Vales de Rechazo", "🔄 Traspasos", "🏬 Envíos a Tienda", "🚛 Recogidas"
 ])
 
-# ---------------------------------------------------------
-# PROCESAMIENTO AUTOMÁTICO DE FOTOS POR SECCIÓN
-# ---------------------------------------------------------
 secciones = [
-    ("📦 Vales de Rechazo", tab_rechazos, "Vales_Rechazo", ["Nº Vale de Rechazo", "Destino", "Fecha", "Foto / Captura", "Estado / Observaciones"]),
-    ("🔄 Traspasos", tab_traspasos, "Traspasos", ["Nº Traspaso", "Destino", "Fecha", "Foto / Captura", "Estado / Observaciones"]),
-    ("🏬 Envíos a Tienda", tab_tienda, "Envios_Tienda", ["Nº Operación", "Destino", "Fecha", "Foto / Captura", "Estado / Observaciones"]),
-    ("🚛 Recogidas", tab_recogidas, "Recogidas", ["Nº Recogida", "Destino", "Fecha", "Foto / Captura", "Estado / Observaciones"])
+    ("📦 Vales de Rechazo", tab_rechazos, "Vales_Rechazo", ["Nº Vale de Rechazo", "Destino", "Fecha Escaneo", "Foto / Captura", "Estado / Observaciones"]),
+    ("🔄 Traspasos", tab_traspasos, "Traspasos", ["Nº Traspaso", "Destino", "Fecha Escaneo", "Foto / Captura", "Estado / Observaciones"]),
+    ("🏬 Envíos a Tienda", tab_tienda, "Envios_Tienda", ["Nº Operación", "Destino", "Fecha Escaneo", "Foto / Captura", "Estado / Observaciones"]),
+    ("🚛 Recogidas", tab_recogidas, "Recogidas", ["Nº Recogida", "Destino", "Fecha Escaneo", "Foto / Captura", "Estado / Observaciones"])
 ]
 
 for titulo, tab, hoja, columnas in secciones:
@@ -73,33 +77,36 @@ for titulo, tab, hoja, columnas in secciones:
         c_cam, c_res = st.columns([1, 1])
         
         with c_cam:
-            st.subheader("📸 Haz la foto al papel o etiqueta")
-            foto = st.camera_input(f"Capturar documento para {titulo}", key=f"cam_{hoja}")
+            st.subheader("📸 Haz la foto al documento")
+            foto = st.camera_input(f"Escaneo rápido para {titulo}", key=f"cam_{hoja}")
             
         with c_res:
-            st.subheader("⚡ Lectura Automática")
+            st.subheader("⚡ Datos de Entrada")
             if foto:
                 img = Image.open(foto)
-                with st.spinner("Escaneando e identificando datos con IA..."):
-                    num_extraido, texto_detectado = extraer_datos_de_foto(img)
+                with st.spinner("Leyendo número de documento..."):
+                    num_extraido = extraer_numero_doc(img)
                 
-                st.success("¡Texto detectado con éxito!")
-                num_doc = st.text_input("Nº Documento / Vale (Detectado):", value=num_extraido, key=f"num_{hoja}")
+                # Asignación automática de la fecha actual de escaneo
+                fecha_escaneo_hoy = datetime.date.today().strftime("%d/%m/%Y")
+                
+                st.success(f"📅 Fecha de escaneo asignada: **{fecha_escaneo_hoy}**")
+                
+                num_doc = st.text_input("Nº Documento / Vale:", value=num_extraido, key=f"num_{hoja}")
                 destino = st.text_input("Destino:", value="Eminencia / CSL", key=f"dest_{hoja}")
-                fecha_doc = st.date_input("Fecha:", value=datetime.date.today(), format="DD/MM/YYYY", key=f"fec_{hoja}")
                 
-                if st.button("💾 Confirmar y Guardar en Excel", key=f"btn_{hoja}"):
+                if st.button("💾 Guardar Registro", key=f"btn_{hoja}"):
                     nueva_fila = {
                         columnas[0]: num_doc,
                         "Destino": destino,
-                        "Fecha": fecha_doc.strftime("%d/%m/%Y"),
+                        "Fecha Escaneo": fecha_escaneo_hoy,
                         "Foto / Captura": "Capturada",
-                        "Estado / Observaciones": "Extraído automáticamente por foto"
+                        "Estado / Observaciones": "Registrado en el momento del escaneo"
                     }
                     df_historico = pd.concat([df_historico, pd.DataFrame([nueva_fila])], ignore_index=True)
                     guardar_datos(df_historico, hoja)
                     st.balloons()
-                    st.success("✅ Guardado en el Excel maestro.")
+                    st.success("✅ Fila guardada con la fecha de hoy.")
 
         st.markdown("---")
         st.subheader("Histórico de Registros")
