@@ -47,14 +47,16 @@ def extraer_numero_doc(imagen_pil):
     
     return num_detectado
 
-# --- ENCABEZADO CORPORATIVO CON LOGO OFICIAL ---
+# --- ENCABEZADO CORPORATIVO ECI CSL SEVILLA ---
 col_logo_1, col_logo_2, col_logo_3 = st.columns([1, 2, 1])
 with col_logo_2:
-    if os.path.exists("el-corte-ingles-logo-png_seeklogo-365743.png"):
-        st.image("el-corte-ingles-logo-png_seeklogo-365743.png", use_container_width=True)
+    # Intenta cargar primero el archivo jpg y luego png si fuera el caso
+    if os.path.exists("logo_eci_sevilla.jpg"):
+        st.image("logo_eci_sevilla.jpg", use_container_width=True)
+    elif os.path.exists("logo_eci_sevilla.png"):
+        st.image("logo_eci_sevilla.png", use_container_width=True)
     else:
-        # Enlace alternativo de respaldo mientras subes la imagen
-        st.image("https://seeklogo.com/images/E/el-corte-ingles-logo-365743.png", use_container_width=True)
+        st.warning("⚠️ No se ha encontrado el archivo 'logo_eci_sevilla.jpg' en GitHub.")
 
 st.markdown("<h3 style='text-align: center; margin-top: -10px; color: #006633;'>Envíos 55653919</h3>", unsafe_allow_html=True)
 st.caption("<p style='text-align: center;'>Registro automático con fecha de escaneo en tiempo real</p>", unsafe_allow_html=True)
